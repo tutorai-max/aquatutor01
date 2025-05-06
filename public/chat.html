@@ -1,0 +1,121 @@
+<!DOCTYPE html>
+<html lang="ja">
+<head>
+  <meta charset="UTF-8">
+  <title>AquaTutorAI - チャット</title>
+  <meta name="viewport" content="width=device-width,initial-scale=1.0">
+  <style>
+    body{font-family:sans-serif;margin:0;padding:0;background:#fff;min-height:100vh;display:flex;flex-direction:column;align-items:center}
+    .logo{width:300px;height:auto;margin:10px 0}
+    #chat-container{width:90%;max-width:800px;margin:0 20px 20px;padding:20px;background:#fff}
+    #messages{height:400px;overflow-y:auto;padding:10px;margin-bottom:10px;white-space:pre-wrap;background:#fff;border:4px solid #1a2b5f;border-radius:5px}
+    #user-input{width:70%;padding:8px;border:1px solid #ccc;border-radius:4px;margin-right:10px}
+    #send-btn{padding:8px 16px;cursor:pointer;border:none;border-radius:4px;background:#8B4513;color:#fff}
+    #send-btn:hover{background:#A0522D}
+    .buttonClass{padding:8px 16px;cursor:pointer;border:none;border-radius:4px;background:#8B4513;color:#fff;margin:5px}
+    .buttonClass:hover{background:#A0522D}
+    .message{margin:5px 0}
+    .bot{color:#000}
+    .user{color:#1a2b5f;text-align:right}
+    .hidden{display:none}
+    @media(max-width:768px){.logo{width:200px}#messages{height:300px}#user-input{width:65%}}
+    @media(max-width:480px){.logo{width:150px}#messages{height:200px}#user-input{width:60%}#send-btn,.buttonClass{padding:6px 12px}}
+  </style>
+</head>
+<body>
+  <img src="images/logo.png" alt="Logo" class="logo">
+
+  <!-- ------------- チャット ------------- -->
+  <div id="chat-container">
+    <h2>AquaTutorAI</h2>
+    <p>入力欄に「始める」と入力して送信してください</p>
+    <div id="messages" aria-live="polite"></div>
+
+    <input type="text" id="user-input" placeholder="ここにメッセージを入力" aria-label="メッセージ入力欄">
+    <button id="send-btn" title="送信ボタン">送信</button>
+    <button class="buttonClass" onclick="showAdmin()">管理画面へ</button>
+  </div>
+
+  <!-- ------------- 管理画面 ------------- -->
+  <div id="admin-container" class="container hidden">
+    <h2>OEM管理画面（デモ版）</h2>
+
+    <!-- セクション別 受講履歴 & 理解度 -->
+    <button id="stats-btn" class="buttonClass">受講履歴 / 理解度を見る</button>
+
+    <!-- 将来実装 -->
+    <button class="buttonClass" disabled>ロールプレイング習熟度（準備中）</button>
+    <button class="buttonClass" disabled>AI評価（準備中）</button>
+
+    <!-- 結果表示 -->
+    <div id="stats-area" style="margin-top:1rem;white-space:pre-wrap;"></div>
+
+    <hr>
+    <button class="buttonClass" onclick="showChat()">チャット画面へ戻る</button>
+  </div>
+
+  <script src="main.js"></script>
+  <script>
+    /* ---------- 画面切り替え ---------- */
+    function showAdmin(){
+      document.getElementById('chat-container').classList.add('hidden');
+      document.getElementById('admin-container').classList.remove('hidden');
+    }
+    function showChat(){
+      document.getElementById('admin-container').classList.add('hidden');
+      document.getElementById('chat-container').classList.remove('hidden');
+    }
+
+    /* ---------- チャット送信 ---------- */
+    document.getElementById('send-btn').onclick = async ()=>{
+      const msg = document.getElementById('user-input').value.trim();
+      if(!msg) return;
+      appendMsg('user',msg);
+      document.getElementById('user-input').value='';
+
+      const r = await fetch('/api/chat',{method:'POST',headers:{'Content-Type':'application/json'},body:JSON.stringify({message:msg})});
+      const data = await r.json();
+      appendMsg('bot',data.reply);
+    };
+    function appendMsg(role,text){
+      const div = document.createElement('div');
+      div.className = 'message '+(role==='user'?'user':'bot');
+      div.textContent = text;
+      document.getElementById('messages').appendChild(div);
+      document.getElementById('messages').scrollTop = document.getElementById('messages').scrollHeight;
+    }
+
+    /* ---------- 管理画面：統計取得 ---------- */
+    document.getElementById('stats-btn').onclick = async ()=>{
+      try{
+        // 1) ログインユーザーの UID を取得
+        const me = await (await fetch('/api/me')).json();     // {uid,email}
+        const uid = me.uid;
+        // 2) サーバ側で全セクションまとめて集計
+        const res = await fetch(`/api/user/${uid}/stats/all`);
+        if(!res.ok) throw new Error('取得失敗');
+        const stats = await res.json();   // { "商品知識の習得":{total,correct,accuracy,history:[]}, ... }
+
+        // 3) 画面に描画
+        let out = '';
+        for(const [sec,info] of Object.entries(stats)){
+          out += `▼ ${sec}\n`;
+          out += `  - 全問題数 : ${info.total}\n`;
+          out += `  - 正解数   : ${info.correct}\n`;
+          out += `  - 理解度   : ${info.accuracy}%\n`;
+          out += `  ----- 履歴 -----\n`;
+          out += info.history.map(h=>{
+            const ts = new Date(h.answer_timestamp._seconds*1000).toLocaleString();
+            return `    ${ts}  Q:${h.question_id}  ${h.correct?'⭕':'❌'}`;
+          }).join('\n') || '    （履歴なし）';
+          out += '\n\n';
+        }
+        document.getElementById('stats-area').textContent = out;
+      }catch(e){
+        console.error(e);
+        alert('統計の取得に失敗しました');
+      }
+    };
+  </script>
+</body>
+</html>

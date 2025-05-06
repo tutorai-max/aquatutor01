@@ -1,0 +1,126 @@
+<!DOCTYPE html>
+<html lang="ja">
+<head>
+  <meta charset="UTF-8">
+  <title>AquaTutorAI - 管理画面（デモ版）</title>
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  <style>
+    body {
+      font-family: sans-serif;
+      margin: 0;
+      padding: 0;
+      background: #fff;
+      min-height: 100vh;
+      display: flex;
+      flex-direction: column;
+      align-items: center;
+    }
+    .logo {
+      width: 300px;
+      height: auto;
+      margin: 10px 0;
+    }
+    #admin-container {
+      width: 90%;
+      max-width: 1000px;
+      margin: 0 20px 20px;
+      padding: 20px;
+      background: #fff;
+      border: 4px solid #1a2b5f;
+      border-radius: 10px;
+    }
+    h2 {
+      text-align: center;
+    }
+    .section {
+      margin-bottom: 30px;
+    }
+    label {
+      display: block;
+      margin-top: 10px;
+    }
+    input, select {
+      width: 100%;
+      padding: 8px;
+      margin-top: 5px;
+      border: 1px solid #ccc;
+      border-radius: 4px;
+    }
+    button {
+      padding: 10px 20px;
+      background: #8B4513;
+      color: #fff;
+      border: none;
+      border-radius: 5px;
+      cursor: pointer;
+      margin-top: 10px;
+    }
+    button:hover {
+      background: #A0522D;
+    }
+    @media (max-width: 768px) {
+      .logo {
+        width: 200px;
+      }
+    }
+    @media (max-width: 480px) {
+      .logo {
+        width: 150px;
+      }
+    }
+  </style>
+</head>
+<body>
+  <img src="images/logo.png" alt="Logo" class="logo">
+
+  <div id="admin-container">
+    <h2>OEM管理画面（デモ版）</h2>
+
+    <div class="section">
+      <h3>個人別データ表示</h3>
+      <label for="user-id">ユーザーID:</label>
+      <input type="text" id="user-id" placeholder="ユーザーIDを入力">
+      <button onclick="viewUserData()">データを見る</button>
+    </div>
+
+    <div class="section">
+      <h3>受講履歴</h3>
+      <button onclick="viewHistory()">受講履歴を見る</button>
+    </div>
+
+    <div class="section">
+      <h3>知識理解度 (%)</h3>
+      <button onclick="viewKnowledge()">理解度を見る</button>
+    </div>
+
+    <div class="section">
+      <h3>ロールプレイング習熟度 (%)</h3>
+      <button onclick="viewRoleplay()">習熟度を見る</button>
+    </div>
+
+    <div class="section">
+      <h3>AI評価</h3>
+      <button onclick="viewAIReview()">AI評価を見る</button>
+    </div>
+  </div>
+
+  <script>
+    function viewUserData() {
+      alert("ユーザー別データを表示します（仮）");
+    }
+    function viewHistory() {
+      alert("受講履歴を表示します（仮）");
+    }
+    function viewKnowledge() {
+      alert("知識理解度を表示します（仮）");
+    }
+    function viewRoleplay() {
+      alert("ロールプレイング習熟度を表示します（仮）");
+    }
+    function viewAIReview() {
+      alert("AI評価を表示します（仮）");
+    }
+  </script>
+
+</body>
+</html>
