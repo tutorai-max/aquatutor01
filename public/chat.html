@@ -44,7 +44,7 @@
     <button id="stats-btn" class="buttonClass">受講履歴 / 理解度を見る</button>
 
     <!-- 将来実装 -->
-    <button class="buttonClass" disabled>ロールプレイング習熟度（準備中）</button>
+    <button id="rbstats-btn" class="buttonClass" disabled>ロールプレイング習熟度（準備中）</button>
     <button class="buttonClass" disabled>AI評価（準備中）</button>
 
     <!-- 結果表示 -->
@@ -114,6 +114,48 @@
       }catch(e){
         console.error(e);
         alert('統計の取得に失敗しました');
+      }
+    };
+
+    /* ---------- 管理画面：ロールプレイング習熟度 ---------- */
+    document.getElementById('rbstats-btn').disabled = false;      // ← ボタン有効化
+    document.getElementById('rbstats-btn').onclick = async () => {
+      try {
+        // 1) 自分の UID を取得
+        const me  = await (await fetch('/api/me')).json();
+        const uid = me.uid;
+
+        // 2) セクション×難易度の統計を取得
+        const res = await fetch(`/api/user/${uid}/roleplay/stats`);
+        if (!res.ok) throw new Error('取得失敗');
+        const stats = await res.json(); // { section: { total, cleared, ..., byDifficulty:{easy:{…},…} } }
+
+        // 3) 文字列組み立て
+        let out = '【ロールプレイング習熟度】\n';
+        for (const [sec, info] of Object.entries(stats)) {
+          out += `▼ ${sec}\n`;
+          out += `  - 総セッション : ${info.total}\n`;
+          out += `  - クリア数     : ${info.cleared}\n`;
+          out += `  - クリア率     : ${info.clearedRate}%\n`;
+          out += `  - 平均時間     : ${info.avgDurationSec}s\n`;
+
+          // 難易度別
+          out += `  ----- 難易度別 -----\n`;
+          for (const [diff, d] of Object.entries(info.byDifficulty)) {
+            out += `    ● ${diff}\n`;
+            out += `       - セッション : ${d.total}\n`;
+            out += `       - クリア数   : ${d.cleared}\n`;
+            out += `       - クリア率   : ${d.clearedRate}%\n`;
+            out += `       - 平均時間   : ${d.avgDurationSec}s\n`;
+          }
+          out += '\n';
+        }
+
+        // 4) 画面に上書き表示
+        document.getElementById('stats-area').textContent = out || '（データなし）';
+      } catch (e) {
+        console.error(e);
+        alert('ロールプレイング統計の取得に失敗しました');
       }
     };
   </script>

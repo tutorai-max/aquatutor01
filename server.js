@@ -165,13 +165,20 @@ app.post("/api/chat", async (req,res)=>{
       s.stage="rp-difficulty";
       const reply="難易度を選んでください。\n1. 初級\n2. 中級\n3. 上級\n（番号で入力）";
       s.conversationHistory.push({role:"assistant",content:reply});
+      s.RPsection = "対面ロールプレイング（B2B）";
       s.turnCount++; return res.json({reply});
     }
     if(msg==="5"){ s.turnCount++; return res.json({reply:"シミュレーションは準備中です。\n"+MENU_TEXT}); }
     /* 初期表示 */
-    if(!msg){ s.turnCount++; return res.json({reply:MENU_TEXT}); }
+    if(!msg){ 
+      s.turnCount++; 
+      s.conversationHistory.push({role:"assistant",content:MENU_TEXT});
+      return res.json({reply:MENU_TEXT}); 
+    }
 
-    s.turnCount++; return res.json({reply:MENU_TEXT});
+    s.conversationHistory.push({role:"assistant",content:MENU_TEXT});
+    s.turnCount++; 
+    return res.json({reply:MENU_TEXT});
   }
 
   /* ============== QUIZ ============== */
@@ -251,7 +258,8 @@ app.post("/api/chat", async (req,res)=>{
             start_timestamp:new Date(s.rpStartAt),
             end_timestamp  :admin.firestore.FieldValue.serverTimestamp(),
             cleared:true,
-            difficulty:s.rpDifficulty
+            difficulty:s.rpDifficulty,
+            section:s.RPsection,
           });
       }
       const reply=`ロールプレイを終了しました。お疲れさまです！\n${MENU_TEXT}`;
@@ -357,6 +365,94 @@ app.get("/api/user/:uid/stats/all",async(req,res)=>{
     res.json(result);
   }catch(e){console.error(e);res.status(500).json({error:"stats fetch failed"});}
 });
+
+/* ─────── ロールプレイング統計（セクション→難易度別）────── */
+app.get("/api/user/:uid/roleplay/stats", async (req, res) => {
+  const uid = req.params.uid;
+
+  const sections = [
+    "対面ロールプレイング（B2B）",
+    "対面ロールプレイング（B2C）",
+    // 追加があればここに追記
+  ];
+
+  try {
+    const result = {};
+
+    for (const sec of sections) {
+      const snap = await firestore
+        .collection("users").doc(uid)
+        .collection("roleplay_sessions")
+        .where("section", "==", sec)
+        .orderBy("start_timestamp", "desc")
+        .get();
+
+      // セクション全体
+      let total = 0,
+          cleared = 0,
+          totalDurationSec = 0;
+
+      // 難易度別ハッシュ
+      const byDifficulty = {}; // {easy:{…}, hard:{…}, ...}
+
+      snap.forEach(doc => {
+        const s = doc.data();
+        const diff = s.difficulty || "unknown";   // 難易度キー
+
+        // 難易度キーの初期化
+        byDifficulty[diff] ??= {
+          total: 0,
+          cleared: 0,
+          totalDurationSec: 0
+        };
+
+        // --- セクション集計 ---
+        total++;
+        byDifficulty[diff].total++;
+
+        if (s.cleared) {
+          cleared++;
+          byDifficulty[diff].cleared++;
+        }
+
+        // 所要時間
+        if (s.end_timestamp && s.start_timestamp) {
+          const durSec =
+            (s.end_timestamp.toDate() - s.start_timestamp.toDate()) / 1000;
+
+          totalDurationSec += durSec;
+          byDifficulty[diff].totalDurationSec += durSec;
+        }
+      });
+
+      // セクション全体の派生指標
+      const avgDurationSec = total ? Math.round(totalDurationSec / total) : 0;
+      const clearedRate    = total ? Math.round((cleared / total) * 100) : 0;
+
+      // 難易度別派生指標を付与
+      Object.entries(byDifficulty).forEach(([k, v]) => {
+        v.avgDurationSec = v.total ? Math.round(v.totalDurationSec / v.total) : 0;
+        v.clearedRate    = v.total ? Math.round((v.cleared / v.total) * 100) : 0;
+        delete v.totalDurationSec; // 元の合計秒は不要なら削除
+      });
+
+      // セクション結果格納
+      result[sec] = {
+        total,
+        cleared,
+        clearedRate,
+        avgDurationSec,
+        byDifficulty       // ← 難易度サブオブジェクト
+      };
+    }
+
+    res.json(result);
+  } catch (e) {
+    console.error(e);
+    res.status(500).json({ error: "roleplay stats fetch failed" });
+  }
+});
+
 
 /* ─────── サーバー起動 ─────── */
 app.listen(PORT,()=>console.log("Server listening on",PORT));
